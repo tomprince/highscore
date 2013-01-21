@@ -26,6 +26,7 @@ setup(
         'twisted >= 11.0.0',
         'sqlalchemy >= 0.7.2',
         'sqlalchemy-migrate == 0.7.2',
+        'txgithub',
         'pyopenssl',
     ],
 )
