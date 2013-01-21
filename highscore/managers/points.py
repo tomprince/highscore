@@ -45,7 +45,7 @@ class PointsManager(service.MultiService):
         display_name = yield self.highscore.users.getDisplayName(userid)
 
         # notify about the points
-        self.highscore.mq.produce('points.add.%d' % userid,
+        self.highscore.mq.produce('points.add',
                 dict(pointsid=id, userid=userid,
                         display_name=display_name, points=points,
                         comments=comments))

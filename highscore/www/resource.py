@@ -83,6 +83,28 @@ class UserPointsResource(Resource):
         name = yield self.highscore.users.getDisplayName(self.userid)
         defer.returnValue(json.dumps({'name':name, 'points':points}))
 
+class EventsResource(resource.Resource):
+    contentType = "text/event-stream"
+
+    def __init__(self, highscore):
+        resource.Resource.__init__(self)
+        self.highscore = highscore
+
+    def render(self, request):
+        request.setHeader("content-type", "text/event-stream")
+        request.write("")
+        qref = self.highscore.mq.consume(
+            (lambda key, msg: self._sendEvent(request, key, msg)),
+            '#')
+        d = request.notifyFinish()
+        d.addBoth(lambda _: qref.stop_consuming())
+        return server.NOT_DONE_YET
+
+    def _sendEvent(self, request, event, data):
+        request.write("event: " + event + "\n")
+        request.write("data: " + json.dumps(data) + "\n")
+        request.write("\n")
+
 
 class ApiResource(Resource):
     contentType = 'application/json'
@@ -90,6 +112,7 @@ class ApiResource(Resource):
     def __init__(self, highscore):
         Resource.__init__(self, highscore)
         self.putChild('user', UsersPointsResource(highscore))
+        self.putChild('events', EventsResource(highscore))
 
 
 class PluginsResource(Resource):
