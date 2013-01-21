@@ -1,0 +1,5 @@
+<ul>
+  <li  data-ng-repeat="user in users">
+    <a href="#/user/{{user.userid}}">{{ user.display_name }}</a>: {{ user.points | number:1 }}
+  </li>
+</ul>

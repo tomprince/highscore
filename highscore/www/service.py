@@ -15,6 +15,7 @@
 
 import urllib
 from twisted.application import strports, service
+from twisted.python import util
 from twisted.web import server, static
 from highscore.www import resource
 
@@ -32,8 +33,12 @@ class WWWService(service.MultiService):
         self.site_public_html = None
 
         self.root = root = static.Data('placeholder', 'text/plain')
-        root.putChild('', resource.HighscoresResource(self.highscore))
-        root.putChild('user', resource.UsersPointsResource(self.highscore))
+        resource
+        #root.putChild('', resource.HighscoresResource(self.highscore))
+
+        print(util.sibpath(__file__, 'content'))
+        self.root = root  = static.File(util.sibpath(__file__, 'content'))
+        root.putChild('api', resource.ApiResource(self.highscore))
         root.putChild('plugins', resource.PluginsResource(self.highscore))
 
         self.site = server.Site(root)

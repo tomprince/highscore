@@ -13,10 +13,10 @@
 #
 # Copyright Buildbot Team Members
 
-import time
-from twisted.python import log, util
+import json
+from twisted.python import log
 from twisted.internet import defer
-from twisted.web import resource, server, template
+from twisted.web import resource, server
 
 class Resource(resource.Resource):
 
@@ -54,49 +54,8 @@ class Resource(resource.Resource):
     def content(self, request):
         return ''
 
-
-class HighscoresElement(template.Element):
-
-    loader = template.XMLFile(util.sibpath(__file__, 'templates/page.xhtml'))
-
-    def __init__(self, highscore, scores):
-        template.Element.__init__(self)
-        self.highscore = highscore
-        self.scores = scores
-
-    @template.renderer
-    def title(self, request, tag):
-        return tag("High Scores")
-
-    @template.renderer
-    def main(self, request, tag):
-        ul = template.tags.ul()
-        tag(ul, class_='highscore')
-        for sc in self.scores:
-            li = template.tags.li()
-            url = self.highscore.www.makeUrl('user', sc['userid'])
-            li(template.tags.a(sc['display_name'],
-                                class_="display_name",
-                                href=url))
-            li(" ")
-            li(template.tags.span(str(round(0.5 + sc['points'])),
-                                    class_="points"))
-            ul(li)
-        return ul
-
-
-class HighscoresResource(Resource):
-
-    @defer.inlineCallbacks
-    def content(self, request):
-        scores = yield self.highscore.points.getHighscores()
-
-        request.write('<!doctype html>\n')
-        defer.returnValue((yield template.flattenString(request,
-                                HighscoresElement(self.highscore, scores))))
-
-
 class UsersPointsResource(Resource):
+    contentType = 'application/json'
 
     def getChild(self, name, request):
         try:
@@ -105,58 +64,33 @@ class UsersPointsResource(Resource):
             return Resource.getChild(self, name, request)
         return UserPointsResource(self.highscore, userid)
 
-
-class UserPointsElement(template.Element):
-
-    loader = template.XMLFile(util.sibpath(__file__, 'templates/page.xhtml'))
-
-    def __init__(self, highscore, display_name, points):
-        template.Element.__init__(self)
-        self.highscore = highscore
-        self.display_name = display_name
-        self.points = points
-
-    @template.renderer
-    def title(self, request, tag):
-        return tag("Points for %s" % (self.display_name,))
-
-    @template.renderer
-    def main(self, request, tag):
-        ul = template.tags.ul()
-        tag(ul, class_='points')
-        for pt in self.points:
-            li = template.tags.li()
-            li(template.tags.span(
-                time.asctime(time.gmtime(pt['when'])),
-                class_="when"))
-            li(" ")
-            li(template.tags.span(
-                str(pt['points']),
-                class_="points"))
-            li(" ")
-            li(template.tags.span(
-                pt['comments'],
-                class_="comments"))
-            ul(li)
-        return ul
+    @defer.inlineCallbacks
+    def content(self, request):
+        scores = yield self.highscore.points.getHighscores()
+        defer.returnValue(json.dumps(scores))
 
 
 class UserPointsResource(Resource):
+    contentType = 'application/json'
 
     def __init__(self, highscore, userid):
         Resource.__init__(self, highscore)
-        self.highscore = highscore
         self.userid = userid
 
     @defer.inlineCallbacks
     def content(self, request):
         points = yield self.highscore.points.getUserPoints(self.userid)
-        display_name = yield self.highscore.users.getDisplayName(self.userid)
+        name = yield self.highscore.users.getDisplayName(self.userid)
+        defer.returnValue(json.dumps({'name':name, 'points':points}))
 
-        request.write('<!doctype html>\n')
-        defer.returnValue((yield template.flattenString(request,
-                                UserPointsElement(self.highscore,
-                                                display_name, points))))
+
+class ApiResource(Resource):
+    contentType = 'application/json'
+
+    def __init__(self, highscore):
+        Resource.__init__(self, highscore)
+        self.putChild('user', UsersPointsResource(highscore))
+
 
 class PluginsResource(Resource):
 
