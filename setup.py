@@ -15,6 +15,11 @@
 
 from distutils.core import setup
 
+try:
+    import setuptools
+except ImportError
+    pass
+
 setup(
     name='highscore',
     version='1.0',
